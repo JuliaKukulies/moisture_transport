@@ -2,6 +2,10 @@
 
 ## This bash script preprocesses data from a 9 km WRF downscaling over the Tibetan Plateau
 
+# activate conda environment to use CDO via conda 
+conda activate basic 
+
+
 for y in {1980..2002}
 do
     for m in {05..09}
