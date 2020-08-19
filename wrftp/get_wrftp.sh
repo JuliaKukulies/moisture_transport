@@ -2,9 +2,6 @@
 
 ## This bash script preprocesses data from a 9 km WRF downscaling over the Tibetan Plateau
 
-
-
-
 for y in {1979..2002}
 do
     for m in {05..09}
@@ -14,12 +11,11 @@ do
 	echo "${DIR}"
 	if [ -d "${DIR}" ]; then
 	    # calculate monthly mean from hourly files 
-	    cdo -select,name=u_tr_p,v_tr_p,r_v_p,Z_p,T_p,precip_g ${DIR}/wrfout_d01_TP9km_CF_${y}-${m}-*nc data/selected.nc
-	    cdo ensmean data/selected.nc data/wrfout_TP9km_${y}_${m}.nc
-	    rm data/selected.nc
+	    cdo -ensmean -select,name=u_tr_p,v_tr_p,r_v_p,Z_p,T_p,precip_g ${DIR}/wrfout_d01_TP9km_CF_${y}-${m}-*nc data/wrfout_TP9km_${y}_${m}.nc
 	fi
     done
 done
+
 
 
 
