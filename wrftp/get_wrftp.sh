@@ -8,7 +8,7 @@ for y in {1979..2002}:
 do
     for m in {05..09}:
     do
-	DIR="/media/DataP3/PlevTP/CF${y}/${m}/"
+	DIR=/media/DataP3/PlevTP/CF${y}/${m}/
 	# check if directory exists
 	echo ${DIR}
 	if [ -d "${DIR}" ]; then
