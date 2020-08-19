@@ -11,9 +11,9 @@ do
 	echo "${DIR}"
 	if [ -d "${DIR}" ]; then
 	    # calculate monthly mean from hourly files 
-	    cdo -select,name=u_tr_p,v_tr_p,r_v_p,Z_p,T_p,precip_g ${DIR}wrfout_d01_TP9km_CF_${y}-${m}-*nc data/selected.nc
-	    cdo ensmean data/selected.nc data/wrfout_TP9km_${y}_${m}.nc
-	    rm data/selected.nc
+	    cdo ensmean ${DIR}wrfout_d01_TP9km_CF_${y}-${m}-*nc data/mean.nc
+	    cdo -select,name=u_tr_p,v_tr_p,r_v_p,Z_p,T_p,precip_g data/mean.nc data/wrfout_TP9km_${y}_${m}.nc
+	    rm data/mean.nc
 	fi
     done
 done
