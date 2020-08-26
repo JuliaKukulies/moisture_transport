@@ -1,4 +1,4 @@
-#! /bin/bash
+d#! /bin/bash
 
 ## This bash script preprocesses data from a 9 km WRF downscaling over the Tibetan Plateau
  
