@@ -24,13 +24,6 @@ pw= 997
 pd = 1.225 
 # specific gas constant for dry air 
 R = 287.058
-
-## grid spacings 
-dx = 2*np.pi*Rad * (0.25/360)
-# latitude dependent 
-dy = 2*np.pi*Rad *(0.25/360) * np.cos(np.nanmean(lats))*(-1)
-dx = dx * units.meters
-dy = dy * units.meters
 # constant for unit in mm per day 
 C= -1/(g*pw)
 c= -1/(g)
@@ -112,6 +105,15 @@ def get_spacing(lats, lons):
     return dlat, dlon
 
 
+def get_delta(lats, Rad):
+    ## grid spacings 
+    dx = 2*np.pi*Rad * (0.25/360)
+    # latitude dependent 
+    dy = 2*np.pi*Rad *(0.25/360) * np.cos(np.nanmean(lats))*(-1)
+    dx = dx * units.meters
+    dy = dy * units.meters
+
+    return dx, dy 
 
 def dy_dlat(y, dlat):
     '''This functions calculates the horizontal divergence of a variable y.
