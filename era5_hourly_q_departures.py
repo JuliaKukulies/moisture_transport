@@ -13,13 +13,15 @@ from pansat.products.reanalysis.era5 import ERA5Product
 
 pressure_vars = ['temperature', 'geopotential','ciwc', 'clwc' 'specific_humidity', 'u_component_of_wind','v_component_of_wind']
 srfc_vars = ['surface_pressure']
+domain = [60, 50, 10, 130]
 
 # temporary directory for hourly files 
 #os.mkdir('tmpdir')
 
 # create product instance
-srfc_hourly = ERA5Product('hourly','surface', variables= srfc_vars, domain = ['60', '50', '10','130'])
-pressure_hourly = ERA5Product('hourly','pressure' variables = pressure_vars, domain = ['60', '50', '10','130'])
+srfc_hourly = ERA5Product('hourly','surface', srfc_vars, domain)
+pressure_hourly = ERA5Product('hourly','pressure', pressure_vars,domain )
+
                               
 for year in np.arange(1979,2020):
     for month in np.arange(5,10):
@@ -90,8 +92,8 @@ for year in np.arange(1979,2020):
             else:
                 m = str(month)
                               
-            xr.DataArray(qu_integral/744).to_netcdf('tmpdir/qu-int' + str(year) + m +'.nc')
-            xr.DataArray(qv_integral/744).to_netcdf('tmpdir/qv-int' +str(year) + m+ '.nc')
+            xr.DataArray(qu_integral/744).to_netcdf('tmpdir/qu-int' + str(year) + m + '.nc')
+            xr.DataArray(qv_integral/744).to_netcdf('tmpdir/qv-int' +str(year) + m + '.nc')
 
         # remove hourly files to save space  
         for i, f in enumerate(pressure_files):
