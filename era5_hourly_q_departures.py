@@ -5,7 +5,7 @@ import xarray as xr
 import glob
 import cdsapi
 import os
-
+import atmotrans
 
 # use pansat package for hourly download 
 from datetime import datetime
@@ -44,17 +44,21 @@ for year in np.arange(1979,2020):
         srfc_files = srfc_hourly.download(t_0, t_1, destination= 'tmpdir')
         pressure_files = pressure_hourly.download(t_0, t_1, destination = 'tmpdir')
 
-        monthly = ERA5Product('monthly','pressure', pressure_vars, domain).download(t_0, t_1, destination = 'tmpdir')
+        # download also monthly mean data 
+        monthly = ERA5Product('monthly','pressure', pressure_vars, domain).download(t_0, t_1, destination = 'tmpdir/monthly')
         
-        if os.path.isfile('tmpdir/reanalysis-era5-single-levels_' + str(year) + m + '*_surface_pressure50-10-60-130.nc') == True:
-            pressure_files = glob.glob('tmpdir/reanalysis-era5-pressure-levels_'+ str(year)+m +'???*_temperature-geopotential-specific_cloud_ice_water_content-specific_cloud_liquid_water_content-specific_humidity-u_component_of_wind-v_component_of_wind50-10-60-130.nc')
-            srfc_files = glob.glob('tmpdir/reanalysis-era5-single-levels_'+ str(year) + m + '???*_surface_pressure50-10-60-130.nc')
+        if len(glob.glob('tmpdir/reanalysis-era5-single-levels_' + str(year) + m + '*surface_pressure*.nc')) > 700 :
+            pressure_files = glob.glob('tmpdir/reanalysis-era5-pressure-levels_'+ str(year)+m +'???*geopotential*.nc')
+            srfc_files = glob.glob('tmpdir/reanalysis-era5-single-levels_'+ str(year) + m + '*_surface_pressure*.nc')
+            monthly = glob.glob('tmpdir/monthly/reanalysis-era5-pressure-levels*'+ str(year)+m +'*geopotential*.nc')
+
             
         # hourly files of one month  
         srfc_files.sort()
         pressure_files.sort()
         
         assert len(srfc_files) == len(pressure_files)
+        assert len(pressure_files) > 0 
 
         qu_integral = np.zeros((201,321))
         qv_integral = np.zeros((201,321))
@@ -93,17 +97,17 @@ for year in np.arange(1979,2020):
                 p_d = (pressure[plev] * 100)/(R*t[plev])
                 q[plev] *= p_d
 
-            # monthly mean 
+            # components of moisture flux  
             qu = q*u
             qv = q*v
 
-            # set geopotential to 0, where surface pressure < 1000 hpa 
+            # set geopotential to 0, where surface pressure < 1000 hpa (needed for column integration) 
             coords = np.where(sp < 1000)
 
             for i, ilat in enumerate(coords[0]):
                 ilon = coords[1][i]
                 sp_value = sp[ilat,ilon]
-                idx, pl = find_nearest_idx(pressure, sp_value)
+                idx, pl = atmotrans.find_nearest_idx(pressure, sp_value)
                 if sp_value > pl:
                     idx = idx + 1     
                 # set q value below ground to 0 
@@ -111,27 +115,27 @@ for year in np.arange(1979,2020):
                 qv[idx:36, ilat, ilon] = 0
 
             # integral of hourly values
-            qu_integral += column_integration(np.flip(qu, axis= 0), np.flip(z, axis = 0), ax = 0)    
-            qv_integral += column_integration(np.flip(qv, axis= 0), np.flip(z, axis = 0), ax = 0)
+            qu_integral += atmotrans.column_integration(np.flip(qu, axis= 0), np.flip(z, axis = 0), ax = 0)    
+            qv_integral += atmotrans.column_integration(np.flip(qv, axis= 0), np.flip(z, axis = 0), ax = 0)
 
             # calculate hourly deviations from monthly mean
             q_dev = q - q_mean 
             u_dev = u - u_mean 
             v_dev = v - v_mean 
             
-            qu_primes += q_dev * u_dev
-            qv_primes += q_dev * v_dev
+            qu_prim += (q_dev * u_dev)
+            qv_prim += (q_dev * v_dev)
             
             data.close()
             srfcdata.close()
 
-        # save hourly-based integral for one month
-        xr.DataArray(qu_integral/744).to_netcdf('tmpdir/qu-int' + str(year) + m + '.nc')
-        xr.DataArray(qv_integral/744).to_netcdf('tmpdir/qv-int' +str(year) + m + '.nc')
+        # save hourly-based integral of qV for one month
+        xr.DataArray(qu_integral/744).to_netcdf('tmpdir/processed/qu-int' + str(year) + m + '.nc')
+        xr.DataArray(qv_integral/744).to_netcdf('tmpdir/processed/qv-int' +str(year) + m + '.nc')
 
         # save monthly average of primes (hourly deviations from monthly mean)
-        xr.DataArray(qu_primes/744).to_netcdf('tmpdir/qu-prim' + str(year) + m + '.nc')
-        xr.DataArray(qv_primes/744).to_netcdf('tmpdir/qv-prim' +str(year) + m + '.nc')
+        xr.DataArray(qu_prim/744).to_netcdf('tmpdir/processed/qu-prim' + str(year) + m + '.nc')
+        xr.DataArray(qv_prim/744).to_netcdf('tmpdir/processed/qv-prim' +str(year) + m + '.nc')
 
                 
         # remove hourly files in month to save space  
