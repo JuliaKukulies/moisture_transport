@@ -16,7 +16,7 @@ R = 287.058
 
 pressure_vars = ['temperature', 'geopotential','specific_cloud_ice_water_content', 'specific_cloud_liquid_water_content',  'specific_humidity', 'u_component_of_wind','v_component_of_wind']
 srfc_vars = ['surface_pressure']
-domain = [60, 50, 10, 130]
+domain = [10, 60, 50, 130]
 
 # temporary directory for hourly files 
 #os.mkdir('tmpdir')
@@ -53,6 +53,8 @@ for year in np.arange(1979,2020):
         # hourly files of one month  
         srfc_files.sort()
         pressure_files.sort()
+        
+        assert len(srfc_files) == len(pressure_files)
 
         qu_integral = np.zeros((201,321))
         qv_integral = np.zeros((201,321))
