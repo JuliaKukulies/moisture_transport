@@ -47,17 +47,19 @@ for year in np.arange(1979,2020):
         # download also monthly mean data 
         monthly = pressure_monthly.download(t_0, t_1, destination = 'tmpdir/monthly')
         srfc_monthly.download(t_0, t_1, destination = 'tmpdir/monthly')
-        
-        if len(glob.glob('tmpdir/reanalysis-era5-single-levels_' + str(year) + m + '*surface_pressure*.nc')) > 700:
-            pressure_files = glob.glob('tmpdir/reanalysis-era5-pressure-levels_'+ str(year)+m +'???*geopotential*.nc')
-            srfc_files = glob.glob('tmpdir/reanalysis-era5-single-levels_'+ str(year) + m + '*_surface_pressure*.nc')
-            monthly = glob.glob('tmpdir/monthly/reanalysis-era5-pressure-levels*'+ str(year)+m +'*geopotential*.nc')
 
 
         if os.path.isfile('tmpdir/processed/qu-int' +str(year)+m+ '.nc') == False: 
             srfc_files = srfc_hourly.download(t_0, t_1, destination= 'tmpdir')
             pressure_files = pressure_hourly.download(t_0, t_1, destination = 'tmpdir')
 
+
+            if len(glob.glob('tmpdir/reanalysis-era5-single-levels_' + str(year) + m + '*surface_pressure*.nc')) > 700:
+                pressure_files = glob.glob('tmpdir/reanalysis-era5-pressure-levels_'+ str(year)+ m +'*geopotential*.nc')
+                srfc_files = glob.glob('tmpdir/reanalysis-era5-single-levels_'+ str(year) + m + '*_surface_pressure*.nc')
+                monthly = glob.glob('tmpdir/monthly/reanalysis-era5-pressure-levels*'+ str(year)+m +'*geopotential*.nc')
+
+            
             # hourly files of one month  
             srfc_files.sort()
             pressure_files.sort()
