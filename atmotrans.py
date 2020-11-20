@@ -122,7 +122,7 @@ def dy_dlat(y, dlat):
     y(numpy array): atmospheric variable, e.g. u, v, q, qu, qv and so on
     dlat(np.array): grid spacing in meter, should be more or less constant'''
 
-    k_lat = np.array([[1], [0], [-1]])
+    k_lat = np.array([[-1], [0], [1]])
     result = convolve(y, k_lat, mode="valid") / dlat
     return result 
 
@@ -133,7 +133,7 @@ def dy_dlon(y, dlon):
     Args:
     y(numpy array): atmospheric variable, e.g. u, v, q, qu, qv and so on
     dlon(np.array): grid spacing in meter, should be varying dependent on latitude '''
-    k_lon= np.array([[-1, 0, 1]])
+    k_lon= np.array([[1, 0, -1]])
     result = convolve(y, k_lon, mode="valid") / dlon
     return result
 
