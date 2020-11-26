@@ -29,7 +29,7 @@ pressure_hourly = ERA5Product('hourly','pressure', pressure_vars,domain)
 srfc_monthly = ERA5Product('monthly', 'surface', srfc_vars_monthly, domain)
 pressure_monthly = ERA5Product('monthly','pressure', pressure_vars, domain)
 
-for year in np.arange(1979,2020):
+for year in np.arange(1998,2020):
     for month in np.arange(5,10):
         if month == 6 or month == 9:
             d= 30
