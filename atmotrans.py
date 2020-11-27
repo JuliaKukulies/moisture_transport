@@ -115,6 +115,88 @@ def get_delta(lats, Rad):
 
     return dx, dy 
 
+
+def derivative_u(quint):
+    """
+
+    This function calculates the derivative in v direction in the spectral space using FFT.
+
+
+    Args:
+
+    quint(np.array): 2D field of integrated water vapor flux in u direction 
+
+    Returns:
+
+    2D field with first derivative of vertically integrated water vapor flux in u direction 
+
+    """
+    quint_padded = np.hstack([np.fliplr(quint[:-1, :-1]), quint[:-1, :-1], np.fliplr(quint[:-1, :-1])]) 
+    f_quint = np.fft.fft(quint_padded, axis=1)
+
+    m, n = f_quint.shape
+    m2 = m // 2
+    n2 = n // 2
+        
+    f_lon = (2.0 * np.pi * np.fft.fftfreq(n)) 
+    f_lon[n2] = 0.0
+    f_lon = np.broadcast_to(f_lon.reshape(1, -1), (m, n)) 
+    
+    df_quint_dx = f_quint.copy() * 1j * f_lon 
+    
+    d_n = 50
+    df_quint_dx[:, n2 - d_n : n2 + d_n + 1] *= 0.0
+    
+    return np.fft.ifft(df_quint_dx, axis = 1).real
+
+
+
+
+
+def derivative_v(qvint):
+    """
+
+    This function calculates the derivative in v direction in the spectral space using FFT.
+
+
+    Args:
+
+    qvint(np.array): 2D field of integrated water vapor flux in v direction 
+
+    Returns:
+
+    2D field with first derivative of vertically integrated water vapor flux in v direction 
+
+    """
+    qvint_padded = np.vstack([np.flipud(qvint[:-1, :-1]), qvint[:-1, :-1], np.flipud(qvint[:-1, :-1])]) 
+    f_qvint = np.fft.fft(qvint_padded, axis=0)
+
+    m, n = f_qvint.shape
+    m2 = m // 2
+    n2 = n // 2
+        
+    f_lat = 2.0 * np.pi * np.fft.fftfreq(m)
+    f_lat[m2] = 0.0
+    f_lat = np.broadcast_to(f_lat.reshape(-1, 1), (m, n)) 
+    
+    df_qvint_dy = f_qvint.copy() * -1j * f_lat
+    
+    d_m = 60
+    df_qvint_dy[m2 - d_m : m2 + d_m + 1, :] *= 0.0
+    
+    return np.fft.ifft(df_qvint_dy, axis = 0).real
+
+
+
+
+
+
+
+
+
+
+
+
 def dy_dlat(y, dlat):
     '''This functions calculates the horizontal divergence of a variable y.
 
