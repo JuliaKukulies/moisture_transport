@@ -86,7 +86,6 @@ def get_spacing(lats, lons):
     lats(numpy array): 1D array with latitudes
     lons(numpy array): 1D array with longitudes'''
 
-
     # creating 2D fields for lats and lons 
     latitudes = np.stack([lats]*np.shape(lons)[0], axis = 1)
     longitudes = np.stack([lons]*np.shape(lats)[0], axis = 0)
