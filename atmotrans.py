@@ -84,7 +84,14 @@ def get_spacing(lats, lons):
 
     Args:
     lats(numpy array): 1D array with latitudes
-    lons(numpy array): 1D array with longitudes'''
+    lons(numpy array): 1D array with longitudes
+
+
+    Returns:
+    dlat(numpy array): latitude spacings in m 
+    dlon(numpy array): longitude spacings in m 
+
+'''
 
     # creating 2D fields for lats and lons 
     latitudes = np.stack([lats]*np.shape(lons)[0], axis = 1)
@@ -124,6 +131,7 @@ def derivative_u(quint):
     Args:
 
     quint(np.array): 2D field of integrated water vapor flux in u direction 
+    dlon(np.array): 2D field of longitude spacings (accounting for different distances dependent on latitude)
 
     Returns:
 
@@ -137,9 +145,9 @@ def derivative_u(quint):
     m2 = m // 2
     n2 = n // 2
         
-    f_lon = (2.0 * np.pi * np.fft.fftfreq(n)) 
-    f_lon[n2] = 0.0
-    f_lon = np.broadcast_to(f_lon.reshape(1, -1), (m, n)) 
+    f_lon = (2.0 * np.pi * np.fft.fftfreq(n), d= dlon[:-1,[0]]/2) 
+    f_lon[:, n2] = 0.0
+    #f_lon = np.broadcast_to(f_lon.reshape(1, -1), (m, n)) 
     
     df_quint_dx = f_quint.copy() * 1j * f_lon 
     
@@ -161,6 +169,7 @@ def derivative_v(qvint):
     Args:
 
     qvint(np.array): 2D field of integrated water vapor flux in v direction 
+    dlat(np.array): 2D field of latitude spacings 
 
     Returns:
 
@@ -174,7 +183,7 @@ def derivative_v(qvint):
     m2 = m // 2
     n2 = n // 2
         
-    f_lat = 2.0 * np.pi * np.fft.fftfreq(m)
+    f_lat = 2.0 * np.pi * np.fft.fftfreq(m, d= dlat[0,0]/2))
     f_lat[m2] = 0.0
     f_lat = np.broadcast_to(f_lat.reshape(-1, 1), (m, n)) 
     
@@ -187,17 +196,8 @@ def derivative_v(qvint):
 
 
 
-
-
-
-
-
-
-
-
-
 def dy_dlat(y, dlat):
-    '''This functions calculates the horizontal divergence of a variable y.
+    '''This functions calculates the derivative along latitudes of a variable y using a finite differential method.
 
     Args:
     y(numpy array): atmospheric variable, e.g. u, v, q, qu, qv and so on
@@ -209,7 +209,7 @@ def dy_dlat(y, dlat):
 
 
 def dy_dlon(y, dlon):
-    '''This functions calculates the horizontal divergence of a variable y.
+    '''This functions calculates the derivative along longitudes of a variable y using a finite differential method.
 
     Args:
     y(numpy array): atmospheric variable, e.g. u, v, q, qu, qv and so on
@@ -219,3 +219,22 @@ def dy_dlon(y, dlon):
     return result
 
 
+def get_surface_values(field, nlat, nlon,nlev, surface_pressures):
+    """
+    This function reduces a 3D meteorological field to two dimensions given the surface pressures. 
+
+    Args:
+    field(numpy array): 3 dimensionsal field of meteorological variable
+    nlat(int): number of latitudes (2nd dimension)
+    nlon(int): number of longitudes (3rd dimension)
+    nlev(int): number of levels (1st dimension )
+    surface_pressures(numpy array): 2D field with surface pressure values, must have same latitude and longitudes as field
+
+    Returns: 2D array with values at surface 
+    """
+    for lat in np.arange(nlat):
+        for lon in np.arange(nlon):
+            idx,pr = find_nearest(surface_pressure[lat,lon])
+            field[np.arange(nlev)!=idx,lat,lon] = 0
+            
+    return np.nansum(field,axis = 0 )

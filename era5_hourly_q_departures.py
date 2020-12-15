@@ -1,4 +1,4 @@
-## This python script downloads hourly data from ERA5 at pressure levels, calculates deviations from its monthly mean and saves the monthly mean of the sum ofmean qV and its primes.
+## This python script downloads hourly data from ERA5 at pressure levels, calculates deviations from its monthly mean and saves the monthly mean of the sum ofmean qV and its primes at hourly, 6-hourly and daily scale. 
 
 import numpy as np
 import xarray as xr 
@@ -33,8 +33,10 @@ for year in np.arange(1998,2020):
     for month in np.arange(5,10):
         if month == 6 or month == 9:
             d= 30
+            hours = 30*24
         else:
             d= 31
+            hours = 31*24 
 
         if month < 10:
             m = '0' + str (month)
@@ -69,15 +71,85 @@ for year in np.arange(1998,2020):
 
             qu_integral = np.zeros((201,321))
             qv_integral = np.zeros((201,321))
-
             qu_prim = np.zeros((37,201,321))
             qv_prim = np.zeros((37,201,321))
+            
+            qu_integral6 = np.zeros((201,321))
+            qv_integral6 = np.zeros((201,321))
+            qu_prim6 = np.zeros((37,201,321))
+            qv_prim6 = np.zeros((37,201,321))
 
-            mfd = np.zeros((201,321))
-
-            # loop through all files in one month 
+            qu_integral_d = np.zeros((201,321))
+            qv_integral_d = np.zeros((201,321))
+            qu_prim_d = np.zeros((37,201,321))
+            qv_prim_d = np.zeros((37,201,321))
+            
+            
+            # loop through all files in one month (on hourly basis)
             for i in np.arange(len(pressure_files)):
-                # one hour file at the time 
+                if np.mod(i,6) == 0:
+                    if i!= 0:
+                        # get 6-hourly primes and integrals 
+                        qu6 = q6/6*(u6/6)
+                        qv6 = q6/6*(v6/6)
+                        for i, ilat in enumerate(coords[0]):
+                            ilon = coords[1][i]
+                            sp_value = sp[ilat,ilon]
+                            idx, pl = atmotrans.find_nearest_idx(pressure, sp_value)
+                            if sp_value > pl:
+                                idx = idx + 1     
+                            # set q value below ground to 0 
+                            qu6[idx:36, ilat, ilon] = 0
+                            qv6[idx:36, ilat, ilon] = 0
+
+                        # integral of hourly values
+                        qu_integral6 += atmotrans.column_integration(np.flip(qu6, axis= 0), np.flip(z6, axis = 0), ax = 0)    
+                        qv_integral6 += atmotrans.column_integration(np.flip(qv6, axis= 0), np.flip(z6, axis = 0), ax = 0)
+                        # calculate deviations from monthly mean
+                        q_dev6 = q6 - q_mean 
+                        u_dev6 = u6 - u_mean 
+                        v_dev6 = v6 - v_mean 
+                        qu_prim6 += (q_dev6 * u_dev6)
+                        qv_prim6 += (q_dev6 * v_dev6)
+
+                    # initiate 6-hourly variables
+                    u6= np.zeros((201,321))
+                    v6= np.zeros((201,321))
+                    z6= np.zeros((201,321))
+                    q6= np.zeros((201,321))             
+                
+                if np.mod(i,24)== 0:
+                    if i!= 0:
+                        # get 6-hourly primes and integrals 
+                        qu_d = q_d/24*(u_d/24)
+                        qv_d = q_d/24*(v_d/24)
+                        for i, ilat in enumerate(coords[0]):
+                            ilon = coords[1][i]
+                            sp_value = sp[ilat,ilon]
+                            idx, pl = atmotrans.find_nearest_idx(pressure, sp_value)
+                            if sp_value > pl:
+                                idx = idx + 1     
+                            # set q value below ground to 0 
+                            qu_d[idx:36, ilat, ilon] = 0
+                            qv_d[idx:36, ilat, ilon] = 0
+
+                        # integral of hourly values
+                        qu_integral_d += atmotrans.column_integration(np.flip(qu_d, axis= 0), np.flip(z_d, axis = 0), ax = 0)    
+                        qv_integral_d += atmotrans.column_integration(np.flip(qv_d, axis= 0), np.flip(z_d, axis = 0), ax = 0)
+                        # calculate deviations from monthly mean
+                        q_dev_d = q6 - q_mean 
+                        u_dev_d = u6 - u_mean 
+                        v_dev_d = v6 - v_mean 
+                        qu_prim_d += (q_dev_d * u_dev_d)
+                        qv_prim_d += (q_dev_d * v_dev_d)
+                    
+                    # initiate daily variables
+                    u_d= np.zeros((201,321))
+                    v_d= np.zeros((201,321))
+                    z_d= np.zeros((201,321))
+                    q_d= np.zeros((201,321))             
+                     
+                ############################################# hourly files ############################################################### 
                 data= xr.open_dataset(pressure_files[i])
                 srfcdata = xr.open_dataset(srfc_files[i])
                 sp = srfcdata.sp.values[0] /100
@@ -91,12 +163,13 @@ for year in np.arange(1998,2020):
                 # extract variables from xarray dataset 
                 t = data.t.values[0]
                 u = data.u.values[0]
-                v= data.v.values[0]
-                z= data.z.values[0]
+                v = data.v.values[0]
+                z = data.z.values[0]
+                
                 # include cloud particles in total moisture 
-                ciwc= data.ciwc.values[0]
+                ciwc = data.ciwc.values[0]
                 clwc = data.clwc.values[0]
-                q= data.q.values[0] + ciwc + clwc 
+                q = data.q.values[0] + ciwc + clwc 
                 pressure = data.level.values
 
                 # convert specific humidity to absolute humidity in kg/m3
@@ -104,10 +177,27 @@ for year in np.arange(1998,2020):
                     p_d = (pressure[plev] * 100)/(R*t[plev])
                     q[plev] *= p_d
 
+                # add to 6-hourly and daily eddies 
+                q_d += q
+                u_d += u
+                v_d += v 
+                q6 += q
+                u6 += u
+                v6 += v
+
                 # components of moisture flux  
                 qu = q*u
                 qv = q*v
-
+                
+                ###### get surface term ##########
+                q_srfc = atm.get_surface_values(q,201,321,37,sp)
+                u_srfc = atm.get_surface_values(u,201,321,37,sp)
+                v_srfc = atm.get_surface_values(v,201,321,37,sp)
+                
+                qsus = q_srfc * u_srfc * atm.derivative_u(ps)
+                qsvs = q_srfc * v_srfc * atm.derivative_v(ps)
+                srfc_term = qsus + qsvs
+                
                 # set geopotential to 0, where surface pressure < 1000 hpa (needed for column integration) 
                 coords = np.where(sp < 1000)
 
@@ -121,6 +211,8 @@ for year in np.arange(1998,2020):
                     qu[idx:36, ilat, ilon] = 0
                     qv[idx:36, ilat, ilon] = 0
 
+            
+                    
                 # integral of hourly values
                 qu_integral += atmotrans.column_integration(np.flip(qu, axis= 0), np.flip(z, axis = 0), ax = 0)    
                 qv_integral += atmotrans.column_integration(np.flip(qv, axis= 0), np.flip(z, axis = 0), ax = 0)
@@ -135,16 +227,29 @@ for year in np.arange(1998,2020):
 
                 data.close()
                 srfcdata.close()
+                
 
             # save hourly-based integral of qV for one month
-            xr.DataArray(qu_integral/744).to_netcdf('tmpdir/processed/qu-int' + str(year) + m + '.nc')
-            xr.DataArray(qv_integral/744).to_netcdf('tmpdir/processed/qv-int' +str(year) + m + '.nc')
+            xr.DataArray(qu_integral/hours).to_netcdf('tmpdir/processed/qu-int' + str(year) + m + '.nc')
+            xr.DataArray(qv_integral/hours).to_netcdf('tmpdir/processed/qv-int' +str(year) + m + '.nc')
 
             # save monthly average of primes (hourly deviations from monthly mean)
-            xr.DataArray(qu_prim/744).to_netcdf('tmpdir/processed/qu-prim' + str(year) + m + '.nc')
-            xr.DataArray(qv_prim/744).to_netcdf('tmpdir/processed/qv-prim' +str(year) + m + '.nc')
+            xr.DataArray(qu_prim/hours).to_netcdf('tmpdir/processed/qu-prim' + str(year) + m + '.nc')
+            xr.DataArray(qv_prim/hours).to_netcdf('tmpdir/processed/qv-prim' +str(year) + m + '.nc')
 
+            # save 6-hourly eddy data
+            xr.DataArray(qu_integral6/(hours/6)).to_netcdf('tmpdir/processed/qu-int-6hr-' + str(year) + m + '.nc')
+            xr.DataArray(qv_integral6/(hours/6)).to_netcdf('tmpdir/processed/qv-int-6hr-' +str(year) + m + '.nc')
+            xr.DataArray(qu_prim6/(hours/6)).to_netcdf('tmpdir/processed/qu-prim-6hr-' + str(year) + m + '.nc')
+            xr.DataArray(qv_prim6/((hours/6)).to_netcdf('tmpdir/processed/qv-prim-6hr-' +str(year) + m + '.nc')
 
+            # save daily eddy data 
+            xr.DataArray(qu_integral_d/(hours/24)).to_netcdf('tmpdir/processed/qu-int-daily-' + str(year) + m + '.nc')
+            xr.DataArray(qv_integral_d/(hours/24)).to_netcdf('tmpdir/processed/qv-int-daily-' +str(year) + m + '.nc')
+            xr.DataArray(qu_prim_d/(hours/24)).to_netcdf('tmpdir/processed/qu-prim-daily-' + str(year) + m + '.nc')
+            xr.DataArray(qv_prim_d/((hours/24)).to_netcdf('tmpdir/processed/qv-prim-daily-' +str(year) + m + '.nc')
+
+            
             # remove hourly files in month to save space  
             for i in np.arange(len(pressure_files)):
                 os.remove(pressure_files[i])
