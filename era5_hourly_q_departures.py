@@ -67,23 +67,26 @@ for year in np.arange(1998,2020):
             pressure_files.sort()
 
             assert len(srfc_files) == len(pressure_files)
-            assert len(pressure_files) > 0 
+            assert len(pressure_files) > 0
 
+            # initialize arrays for calculations 
             qu_integral = np.zeros((201,321))
             qv_integral = np.zeros((201,321))
             qu_prim = np.zeros((37,201,321))
             qv_prim = np.zeros((37,201,321))
+            srfc_term = np.zeros((37,201,321))
             
             qu_integral6 = np.zeros((201,321))
             qv_integral6 = np.zeros((201,321))
             qu_prim6 = np.zeros((37,201,321))
             qv_prim6 = np.zeros((37,201,321))
+            srfc_term6 = np.zeros((37,201,321))
 
             qu_integral_d = np.zeros((201,321))
             qv_integral_d = np.zeros((201,321))
             qu_prim_d = np.zeros((37,201,321))
             qv_prim_d = np.zeros((37,201,321))
-            
+            srfc_term_d = np.zeros((37,201,321))
             
             # loop through all files in one month (on hourly basis)
             for i in np.arange(len(pressure_files)):
@@ -111,12 +114,21 @@ for year in np.arange(1998,2020):
                         v_dev6 = v6 - v_mean 
                         qu_prim6 += (q_dev6 * u_dev6)
                         qv_prim6 += (q_dev6 * v_dev6)
+                        # ###### get surface term ##########
+                        q_srfc6 = atm.get_surface_values(q6/6,201,321,37,sp6/6)
+                        u_srfc6 = atm.get_surface_values(u6/6,201,321,37,sp6/6)
+                        v_srfc6 = atm.get_surface_values(v6/6,201,321,37,sp6/6)
+                        qsus6 = q_srfc6 * u_srfc6 * atm.derivative_u(sp6/6, dlon)
+                        qsvs6 = q_srfc6 * v_srfc6 * atm.derivative_v(sp6/6, dlat)
+                        srfc_term6 += qsus6 + qsvs6
+                
 
                     # initiate 6-hourly variables
                     u6= np.zeros((201,321))
                     v6= np.zeros((201,321))
                     z6= np.zeros((201,321))
-                    q6= np.zeros((201,321))             
+                    q6= np.zeros((201,321))
+                    sp6= np.zeros((201,321))
                 
                 if np.mod(i,24)== 0:
                     if i!= 0:
@@ -142,18 +154,27 @@ for year in np.arange(1998,2020):
                         v_dev_d = v6 - v_mean 
                         qu_prim_d += (q_dev_d * u_dev_d)
                         qv_prim_d += (q_dev_d * v_dev_d)
+
+                         # ###### get surface term ##########
+                        q_srfc_d = atm.get_surface_values(q6/6,201,321,37,sp_d/24)
+                        u_srfc_d = atm.get_surface_values(u6/6,201,321,37,sp_d/24)
+                        v_srfc_d = atm.get_surface_values(v6/6,201,321,37,sp_d/24)
+                        qsus_d = q_srfc6 * u_srfc6 * atm.derivative_u(sp_d/24, dlon)
+                        qsvs_d = q_srfc6 * v_srfc6 * atm.derivative_v(sp_d/24, dlat)
+                        srfc_term_d += qsus_d + qsvs_d
                     
                     # initiate daily variables
                     u_d= np.zeros((201,321))
                     v_d= np.zeros((201,321))
                     z_d= np.zeros((201,321))
                     q_d= np.zeros((201,321))             
-                     
+                    sp_d= np.zeros((201,321)) 
                 ############################################# hourly files ############################################################### 
                 data= xr.open_dataset(pressure_files[i])
                 srfcdata = xr.open_dataset(srfc_files[i])
                 sp = srfcdata.sp.values[0] /100
                 meandata= xr.open_dataset(monthly[0])
+                dlat,dlon = atm.get_spacing(meandata.latitude.values, meandata.longitudes.values)
 
                 # extract monthly means
                 u_mean = meandata.u.values[0]
@@ -180,10 +201,12 @@ for year in np.arange(1998,2020):
                 # add to 6-hourly and daily eddies 
                 q_d += q
                 u_d += u
-                v_d += v 
+                v_d += v
+                sp_d += sp 
                 q6 += q
                 u6 += u
                 v6 += v
+                sp6 += sp
 
                 # components of moisture flux  
                 qu = q*u
@@ -194,9 +217,9 @@ for year in np.arange(1998,2020):
                 u_srfc = atm.get_surface_values(u,201,321,37,sp)
                 v_srfc = atm.get_surface_values(v,201,321,37,sp)
                 
-                qsus = q_srfc * u_srfc * atm.derivative_u(ps)
-                qsvs = q_srfc * v_srfc * atm.derivative_v(ps)
-                srfc_term = qsus + qsvs
+                qsus = q_srfc * u_srfc * atm.derivative_u(sp,dlon)
+                qsvs = q_srfc * v_srfc * atm.derivative_v(sp,dlat)
+                srfc_term += qsus + qsvs
                 
                 # set geopotential to 0, where surface pressure < 1000 hpa (needed for column integration) 
                 coords = np.where(sp < 1000)
@@ -231,12 +254,17 @@ for year in np.arange(1998,2020):
 
             # save hourly-based integral of qV for one month
             xr.DataArray(qu_integral/hours).to_netcdf('tmpdir/processed/qu-int' + str(year) + m + '.nc')
-            xr.DataArray(qv_integral/hours).to_netcdf('tmpdir/processed/qv-int' +str(year) + m + '.nc')
+            xr.DataArray(qv_integral/hours).to_netcdf('tmpdir/processed/qv-int' +str(year) + m + '.nc')=
+
+            # save hourly-based surface term
+            xr.DataArray(srfc_term/hours).to_netcdf('tmpdir/processed/srfc_term' + str(year) + m + '.nc')
+            xr.DataArray(srfc_term/hours).to_netcdf('tmpdir/processed/srfc_term' +str(year) + m + '.nc')
 
             # save monthly average of primes (hourly deviations from monthly mean)
             xr.DataArray(qu_prim/hours).to_netcdf('tmpdir/processed/qu-prim' + str(year) + m + '.nc')
             xr.DataArray(qv_prim/hours).to_netcdf('tmpdir/processed/qv-prim' +str(year) + m + '.nc')
 
+            
             # save 6-hourly eddy data
             xr.DataArray(qu_integral6/(hours/6)).to_netcdf('tmpdir/processed/qu-int-6hr-' + str(year) + m + '.nc')
             xr.DataArray(qv_integral6/(hours/6)).to_netcdf('tmpdir/processed/qv-int-6hr-' +str(year) + m + '.nc')
