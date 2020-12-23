@@ -52,6 +52,12 @@ def geopotential_to_height(z):
     return geometric_heights 
 
 
+
+def colint_pressure(values,pressure_levels):
+    return np.trapz(values, pressure_levels, axis = 0)* g
+
+
+
 def column_integration(values, z, ax = None ):
     """This functions calculates the column-integrated value of a given atmospheric variable at different pressure levels
     Parameters:
@@ -122,7 +128,7 @@ def get_delta(lats, Rad):
     return dx, dy 
 
 
-def derivative_u(quint):
+def derivative_u(quint,dlon):
     """
 
     This function calculates the derivative in v direction in the spectral space using FFT.
@@ -145,7 +151,7 @@ def derivative_u(quint):
     m2 = m // 2
     n2 = n // 2
         
-    f_lon = (2.0 * np.pi * np.fft.fftfreq(n), d= dlon[:-1,[0]]/2) 
+    f_lon = (2.0 * np.pi * np.fft.fftfreq(n, d= dlon[:-1,[0]]/2) )
     f_lon[:, n2] = 0.0
     #f_lon = np.broadcast_to(f_lon.reshape(1, -1), (m, n)) 
     
@@ -160,7 +166,7 @@ def derivative_u(quint):
 
 
 
-def derivative_v(qvint):
+def derivative_v(qvint,dlat):
     """
 
     This function calculates the derivative in v direction in the spectral space using FFT.
@@ -183,7 +189,7 @@ def derivative_v(qvint):
     m2 = m // 2
     n2 = n // 2
         
-    f_lat = 2.0 * np.pi * np.fft.fftfreq(m, d= dlat[0,0]/2))
+    f_lat = 2.0 * np.pi * np.fft.fftfreq(m, d= dlat[0,0]/2)
     f_lat[m2] = 0.0
     f_lat = np.broadcast_to(f_lat.reshape(-1, 1), (m, n)) 
     
@@ -219,7 +225,7 @@ def dy_dlon(y, dlon):
     return result
 
 
-def get_surface_values(field, nlat, nlon,nlev, surface_pressures):
+def get_surface_values(field, nlat, nlon,nlev, surface_pressures,pressure_levels):
     """
     This function reduces a 3D meteorological field to two dimensions given the surface pressures. 
 
@@ -229,12 +235,14 @@ def get_surface_values(field, nlat, nlon,nlev, surface_pressures):
     nlon(int): number of longitudes (3rd dimension)
     nlev(int): number of levels (1st dimension )
     surface_pressures(numpy array): 2D field with surface pressure values, must have same latitude and longitudes as field
+    pressure_levels(numpy array): 1D array with pressure levels of field variable 
+
 
     Returns: 2D array with values at surface 
     """
     for lat in np.arange(nlat):
         for lon in np.arange(nlon):
-            idx,pr = find_nearest(surface_pressure[lat,lon])
+            idx,pr = find_nearest_idx(pressure_levels,surface_pressures[lat,lon])
             field[np.arange(nlev)!=idx,lat,lon] = 0
             
     return np.nansum(field,axis = 0 )

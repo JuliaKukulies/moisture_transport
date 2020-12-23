@@ -5,7 +5,7 @@ import xarray as xr
 import glob
 import cdsapi
 import os
-import atmotrans
+import atmotrans 
 
 # use pansat package for hourly download 
 from datetime import datetime
@@ -29,7 +29,7 @@ pressure_hourly = ERA5Product('hourly','pressure', pressure_vars,domain)
 srfc_monthly = ERA5Product('monthly', 'surface', srfc_vars_monthly, domain)
 pressure_monthly = ERA5Product('monthly','pressure', pressure_vars, domain)
 
-for year in np.arange(1998,2020):
+for year in np.arange(2010,2020):
     for month in np.arange(5,10):
         if month == 6 or month == 9:
             d= 30
@@ -74,19 +74,19 @@ for year in np.arange(1998,2020):
             qv_integral = np.zeros((201,321))
             qu_prim = np.zeros((37,201,321))
             qv_prim = np.zeros((37,201,321))
-            srfc_term = np.zeros((37,201,321))
+            srfc_term = np.zeros((37,200,320))
             
             qu_integral6 = np.zeros((201,321))
             qv_integral6 = np.zeros((201,321))
             qu_prim6 = np.zeros((37,201,321))
             qv_prim6 = np.zeros((37,201,321))
-            srfc_term6 = np.zeros((37,201,321))
+            srfc_term6 = np.zeros((37,200,320))
 
             qu_integral_d = np.zeros((201,321))
             qv_integral_d = np.zeros((201,321))
             qu_prim_d = np.zeros((37,201,321))
             qv_prim_d = np.zeros((37,201,321))
-            srfc_term_d = np.zeros((37,201,321))
+            srfc_term_d = np.zeros((37,200,320))
             
             # loop through all files in one month (on hourly basis)
             for i in np.arange(len(pressure_files)):
@@ -95,9 +95,9 @@ for year in np.arange(1998,2020):
                         # get 6-hourly primes and integrals 
                         qu6 = q6/6*(u6/6)
                         qv6 = q6/6*(v6/6)
-                        for i, ilat in enumerate(coords[0]):
-                            ilon = coords[1][i]
-                            sp_value = sp[ilat,ilon]
+                        for ix, ilat in enumerate(coords[0]):
+                            ilon = coords[1][ix]
+                            sp_value = (sp6/6)[ilat,ilon]
                             idx, pl = atmotrans.find_nearest_idx(pressure, sp_value)
                             if sp_value > pl:
                                 idx = idx + 1     
@@ -106,28 +106,30 @@ for year in np.arange(1998,2020):
                             qv6[idx:36, ilat, ilon] = 0
 
                         # integral of hourly values
-                        qu_integral6 += atmotrans.column_integration(np.flip(qu6, axis= 0), np.flip(z6, axis = 0), ax = 0)    
-                        qv_integral6 += atmotrans.column_integration(np.flip(qv6, axis= 0), np.flip(z6, axis = 0), ax = 0)
+                        qu_integral6 += atmotrans.column_integration(np.flip(qu6, axis= 0), np.flip(z6/6, axis = 0), ax = 0)    
+                        qv_integral6 += atmotrans.column_integration(np.flip(qv6, axis= 0), np.flip(z6/6, axis = 0), ax = 0)
+                        print('eddy integrals updated.')
+                        
                         # calculate deviations from monthly mean
-                        q_dev6 = q6 - q_mean 
-                        u_dev6 = u6 - u_mean 
-                        v_dev6 = v6 - v_mean 
+                        q_dev6 = q6 /6 - q_mean 
+                        u_dev6 = u6 /6 - u_mean 
+                        v_dev6 = v6 /6 - v_mean 
                         qu_prim6 += (q_dev6 * u_dev6)
                         qv_prim6 += (q_dev6 * v_dev6)
                         # ###### get surface term ##########
-                        q_srfc6 = atm.get_surface_values(q6/6,201,321,37,sp6/6)
-                        u_srfc6 = atm.get_surface_values(u6/6,201,321,37,sp6/6)
-                        v_srfc6 = atm.get_surface_values(v6/6,201,321,37,sp6/6)
-                        qsus6 = q_srfc6 * u_srfc6 * atm.derivative_u(sp6/6, dlon)
-                        qsvs6 = q_srfc6 * v_srfc6 * atm.derivative_v(sp6/6, dlat)
+                        q_srfc6 = atmotrans.get_surface_values(q6/6,201,321,37,sp6/6,meandata.level.values)
+                        u_srfc6 = atmotrans.get_surface_values(u6/6,201,321,37,sp6/6,meandata.level.values)
+                        v_srfc6 = atmotrans.get_surface_values(v6/6,201,321,37,sp6/6,meandata.level.values)
+                        qsus6 = q_srfc6[:-1,:-1] * u_srfc6[:-1,:-1] * atmotrans.derivative_u(sp6/6, dlon)[:,320:320*2] 
+                        qsvs6 = q_srfc6[:-1,:-1] * v_srfc6[:-1,:-1] * atmotrans.derivative_v(sp6/6, dlat)[200:400, :]  
                         srfc_term6 += qsus6 + qsvs6
                 
 
                     # initiate 6-hourly variables
-                    u6= np.zeros((201,321))
-                    v6= np.zeros((201,321))
-                    z6= np.zeros((201,321))
-                    q6= np.zeros((201,321))
+                    u6= np.zeros((37,201,321))
+                    v6= np.zeros((37,201,321))
+                    z6= np.zeros((37,201,321))
+                    q6= np.zeros((37,201,321))
                     sp6= np.zeros((201,321))
                 
                 if np.mod(i,24)== 0:
@@ -135,9 +137,9 @@ for year in np.arange(1998,2020):
                         # get 6-hourly primes and integrals 
                         qu_d = q_d/24*(u_d/24)
                         qv_d = q_d/24*(v_d/24)
-                        for i, ilat in enumerate(coords[0]):
-                            ilon = coords[1][i]
-                            sp_value = sp[ilat,ilon]
+                        for ix, ilat in enumerate(coords[0]):
+                            ilon = coords[1][ix]
+                            sp_value = (sp_d/24)[ilat,ilon]
                             idx, pl = atmotrans.find_nearest_idx(pressure, sp_value)
                             if sp_value > pl:
                                 idx = idx + 1     
@@ -149,32 +151,32 @@ for year in np.arange(1998,2020):
                         qu_integral_d += atmotrans.column_integration(np.flip(qu_d, axis= 0), np.flip(z_d, axis = 0), ax = 0)    
                         qv_integral_d += atmotrans.column_integration(np.flip(qv_d, axis= 0), np.flip(z_d, axis = 0), ax = 0)
                         # calculate deviations from monthly mean
-                        q_dev_d = q6 - q_mean 
-                        u_dev_d = u6 - u_mean 
-                        v_dev_d = v6 - v_mean 
+                        q_dev_d = q_d - q_mean 
+                        u_dev_d = u_d - u_mean 
+                        v_dev_d = v_d - v_mean 
                         qu_prim_d += (q_dev_d * u_dev_d)
                         qv_prim_d += (q_dev_d * v_dev_d)
 
                          # ###### get surface term ##########
-                        q_srfc_d = atm.get_surface_values(q6/6,201,321,37,sp_d/24)
-                        u_srfc_d = atm.get_surface_values(u6/6,201,321,37,sp_d/24)
-                        v_srfc_d = atm.get_surface_values(v6/6,201,321,37,sp_d/24)
-                        qsus_d = q_srfc6 * u_srfc6 * atm.derivative_u(sp_d/24, dlon)
-                        qsvs_d = q_srfc6 * v_srfc6 * atm.derivative_v(sp_d/24, dlat)
+                        q_srfc_d = atmotrans.get_surface_values(q_d/24,201,321,37,sp_d/24,meandata.level.values)
+                        u_srfc_d = atmotrans.get_surface_values(u_d/24,201,321,37,sp_d/24,meandata.level.values)
+                        v_srfc_d = atmotrans.get_surface_values(v_d/24,201,321,37,sp_d/24,meandata.level.values)
+                        qsus_d = q_srfc_d[:-1,:-1] * u_srfc_d[:-1,:-1] * atmotrans.derivative_u(sp_d/24, dlon)[:,320:320*2]  
+                        qsvs_d = q_srfc_d[:-1,:-1] * v_srfc_d[:-1,:-1] * atmotrans.derivative_v(sp_d/24, dlat)[200:400, :]  
                         srfc_term_d += qsus_d + qsvs_d
                     
                     # initiate daily variables
-                    u_d= np.zeros((201,321))
-                    v_d= np.zeros((201,321))
-                    z_d= np.zeros((201,321))
-                    q_d= np.zeros((201,321))             
+                    u_d= np.zeros((37,201,321))
+                    v_d= np.zeros((37,201,321))
+                    z_d= np.zeros((37,201,321))
+                    q_d= np.zeros((37,201,321))             
                     sp_d= np.zeros((201,321)) 
                 ############################################# hourly files ############################################################### 
                 data= xr.open_dataset(pressure_files[i])
                 srfcdata = xr.open_dataset(srfc_files[i])
                 sp = srfcdata.sp.values[0] /100
                 meandata= xr.open_dataset(monthly[0])
-                dlat,dlon = atm.get_spacing(meandata.latitude.values, meandata.longitudes.values)
+                dlat,dlon = atmotrans.get_spacing(meandata.latitude.values, meandata.longitude.values)
 
                 # extract monthly means
                 u_mean = meandata.u.values[0]
@@ -213,19 +215,19 @@ for year in np.arange(1998,2020):
                 qv = q*v
                 
                 ###### get surface term ##########
-                q_srfc = atm.get_surface_values(q,201,321,37,sp)
-                u_srfc = atm.get_surface_values(u,201,321,37,sp)
-                v_srfc = atm.get_surface_values(v,201,321,37,sp)
+                q_srfc = atmotrans.get_surface_values(q,201,321,37,sp,meandata.level.values)
+                u_srfc = atmotrans.get_surface_values(u,201,321,37,sp,meandata.level.values)
+                v_srfc = atmotrans.get_surface_values(v,201,321,37,sp,meandata.level.values)
                 
-                qsus = q_srfc * u_srfc * atm.derivative_u(sp,dlon)
-                qsvs = q_srfc * v_srfc * atm.derivative_v(sp,dlat)
+                qsus = q_srfc[:-1,:-1] * u_srfc[:-1,:-1] * atmotrans.derivative_u(sp,dlon)[:,320:320*2]  
+                qsvs = q_srfc[:-1,:-1] * v_srfc[:-1,:-1] * atmotrans.derivative_v(sp,dlat)[200:400, :]  
                 srfc_term += qsus + qsvs
                 
                 # set geopotential to 0, where surface pressure < 1000 hpa (needed for column integration) 
                 coords = np.where(sp < 1000)
 
-                for i, ilat in enumerate(coords[0]):
-                    ilon = coords[1][i]
+                for ix, ilat in enumerate(coords[0]):
+                    ilon = coords[1][ix]
                     sp_value = sp[ilat,ilon]
                     idx, pl = atmotrans.find_nearest_idx(pressure, sp_value)
                     if sp_value > pl:
@@ -233,8 +235,6 @@ for year in np.arange(1998,2020):
                     # set q value below ground to 0 
                     qu[idx:36, ilat, ilon] = 0
                     qv[idx:36, ilat, ilon] = 0
-
-            
                     
                 # integral of hourly values
                 qu_integral += atmotrans.column_integration(np.flip(qu, axis= 0), np.flip(z, axis = 0), ax = 0)    
@@ -254,7 +254,7 @@ for year in np.arange(1998,2020):
 
             # save hourly-based integral of qV for one month
             xr.DataArray(qu_integral/hours).to_netcdf('tmpdir/processed/qu-int' + str(year) + m + '.nc')
-            xr.DataArray(qv_integral/hours).to_netcdf('tmpdir/processed/qv-int' +str(year) + m + '.nc')=
+            xr.DataArray(qv_integral/hours).to_netcdf('tmpdir/processed/qv-int' +str(year) + m + '.nc')
 
             # save hourly-based surface term
             xr.DataArray(srfc_term/hours).to_netcdf('tmpdir/processed/srfc_term' + str(year) + m + '.nc')
@@ -263,24 +263,25 @@ for year in np.arange(1998,2020):
             # save monthly average of primes (hourly deviations from monthly mean)
             xr.DataArray(qu_prim/hours).to_netcdf('tmpdir/processed/qu-prim' + str(year) + m + '.nc')
             xr.DataArray(qv_prim/hours).to_netcdf('tmpdir/processed/qv-prim' +str(year) + m + '.nc')
-
             
             # save 6-hourly eddy data
             xr.DataArray(qu_integral6/(hours/6)).to_netcdf('tmpdir/processed/qu-int-6hr-' + str(year) + m + '.nc')
             xr.DataArray(qv_integral6/(hours/6)).to_netcdf('tmpdir/processed/qv-int-6hr-' +str(year) + m + '.nc')
             xr.DataArray(qu_prim6/(hours/6)).to_netcdf('tmpdir/processed/qu-prim-6hr-' + str(year) + m + '.nc')
-            xr.DataArray(qv_prim6/((hours/6)).to_netcdf('tmpdir/processed/qv-prim-6hr-' +str(year) + m + '.nc')
+            xr.DataArray(qv_prim6/(hours/6)).to_netcdf('tmpdir/processed/qv-prim-6hr-' +str(year) + m + '.nc')
+            xr.DataArray(srfc_term6/(hours/6)).to_netcdf('tmpdir/processed/srfc_term-6hr-' + str(year) + m + '.nc')
 
             # save daily eddy data 
             xr.DataArray(qu_integral_d/(hours/24)).to_netcdf('tmpdir/processed/qu-int-daily-' + str(year) + m + '.nc')
             xr.DataArray(qv_integral_d/(hours/24)).to_netcdf('tmpdir/processed/qv-int-daily-' +str(year) + m + '.nc')
             xr.DataArray(qu_prim_d/(hours/24)).to_netcdf('tmpdir/processed/qu-prim-daily-' + str(year) + m + '.nc')
-            xr.DataArray(qv_prim_d/((hours/24)).to_netcdf('tmpdir/processed/qv-prim-daily-' +str(year) + m + '.nc')
+            xr.DataArray(qv_prim_d/(hours/24)).to_netcdf('tmpdir/processed/qv-prim-daily-' +str(year) + m + '.nc')
+            xr.DataArray(srfc_term_d/(hours/24)).to_netcdf('tmpdir/processed/srfc_term-daily-' +str(year) + m + '.nc')
 
-            
+                                    
             # remove hourly files in month to save space  
-            for i in np.arange(len(pressure_files)):
-                os.remove(pressure_files[i])
-                os.remove(srfc_files[i])
+            #for i in np.arange(len(pressure_files)):
+             #   os.remove(pressure_files[i])
+              #  os.remove(srfc_files[i])
 
-            print('hourly integral calculated for year' +str(year) + 'and month ' + m)
+            print('all subseasonal eddies calculated for year' +str(year) + 'and month ' + m)
