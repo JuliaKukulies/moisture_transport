@@ -1,5 +1,4 @@
-''' This python module collects functions for the calculation of atmospheric moisture divergence. '''
-
+''' This python module collects functions for the calculation of atmospheric water vapor transport and moisture divergence. '''
 
 # import libraries 
 import numpy as np 
@@ -54,6 +53,10 @@ def geopotential_to_height(z):
 
 
 def colint_pressure(values,pressure_levels):
+    """ This function calculates the column-integrated water vapor
+    in kg/m2 from specific humidity (kg/kg) at different hpa levels.
+
+    """
     return np.trapz(values, pressure_levels, axis = 0)* g
 
 
@@ -79,6 +82,20 @@ def column_integration(values, z, ax = None ):
     colint = np.trapz(values, x= geometric_heights, axis =ax )
 
     return colint
+
+
+def total_integrated_moisture_flx(qu, qv):
+    """
+    Returns 2D field with total column-integrated water vapour flux, given: 
+
+    qu: 2D field with column-integrated moisture flux u -component 
+    qv: 2D field with column-integrated moisture flux v -component    
+
+    """
+    return np.sqrt(qu **2 + qv **2)
+
+
+
 
 
 
@@ -160,7 +177,9 @@ def derivative_u(quint,dlon):
     d_n = 50
     df_quint_dx[:, n2 - d_n : n2 + d_n + 1] *= 0.0
     
-    return np.fft.ifft(df_quint_dx, axis = 1).real
+    real = np.fft.ifft(df_quint_dx, axis = 1).real
+
+    return real[ :, quint[:-1, :-1].shape[1]: quint[:-1, :-1].shape[1] * 2]
 
 
 
@@ -197,9 +216,9 @@ def derivative_v(qvint,dlat):
     
     d_m = 60
     df_qvint_dy[m2 - d_m : m2 + d_m + 1, :] *= 0.0
-    
-    return np.fft.ifft(df_qvint_dy, axis = 0).real
+    real = np.fft.ifft(df_qvint_dy, axis = 0).real
 
+    return real[qvint[:-1, :-1].shape[0]: qvint[:-1, :-1].shape[0] * 2, :]
 
 
 def dy_dlat(y, dlat):
@@ -223,6 +242,8 @@ def dy_dlon(y, dlon):
     k_lon= np.array([[1, 0, -1]])
     result = convolve(y, k_lon, mode="valid") / dlon
     return result
+
+
 
 
 def get_surface_values(field, nlat, nlon,nlev, surface_pressures,pressure_levels):
