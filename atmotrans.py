@@ -267,3 +267,103 @@ def get_surface_values(field, nlat, nlon,nlev, surface_pressures,pressure_levels
             field[np.arange(nlev)!=idx,lat,lon] = 0
             
     return np.nansum(field,axis = 0 )
+
+
+
+
+def divergence(data,qu,qv):
+    """
+
+    This function calculates the divergence of a given flux.
+
+    Args:
+    data: xarray dataset containing coordinate references 
+    qu: u-component of 2D flux field (e.g. moisture flux)
+    qv: v-component of 2D flux field 
+
+    Returns: 2D field with divergence of the flux. 
+    
+    """
+    import wrf
+    dlat, dlon = atm.get_spacing(data.latitude.values, data.longitude.values)
+    udiff= atm.derivative_u(qu, dlon)
+    vdiff= atm.derivative_v(qv, dlat)
+    conv_total = (udiff + vdiff)
+
+    return wrf.smooth2d(-(vdiff + udiff)*86400 , passes = 3)
+
+
+
+def correct_column_integration(data, sp, q, u, v, u10, v10):
+    """
+
+    This function performs an interpolation and extrapolation before 
+    the vertical column integration over pressure coordinates. Humidity 
+    values are interpolated onto the surface pressure field (extrapolated 
+    when surface pressure is higher
+    than the lowest pressure level in the model). 
+
+    Args: 
+    data: xarray dataset with data and coordinate references
+    sp: 2D field with corresponding surafce pressures
+    q: humidity field on pressure levels  
+    u: u wind field on pressure levels 
+    v: v wind field on pressure levels 
+
+    u10: 2D field with surface wind u-component
+    v10: 2D field with surface wind v-component
+
+    Returns: 
+    colint: total column water vapour 
+    qu: vertically integrated moisture eastward flux 
+    qv: vertically integrated moisture northward flux 
+
+
+    """
+    from scipy import interpolate
+    import wrf 
+    
+    coords = np.where(sp < 10000)
+    pressure = np.zeros((q.shape))
+    # get humidity value for surface pressures 
+    surface_humidity = wrf.interplevel(q, pressure, sp)
+
+    for i, ilat in enumerate(coords[0]):
+        ilon = coords[1][i]
+        sp_value = sp[ilat,ilon]
+
+        pressure[:,ilat,ilon]= data.level.values
+        pressure[36] =  sp
+        idx, pl = atm.find_nearest_idx(data.level.values, sp_value)
+
+        # function for extrapolation/ interpolation: 
+        x_vals = data.level.values
+        y_vals= q[:,ilat,ilon]
+        f = interpolate.interp1d(x_vals, y_vals, fill_value = "extrapolate", kind = 'cubic')
+
+        # set q value below ground to 0 
+        if sp_value < 1000:
+            if sp_value > pl:
+                idx = idx + 1  
+            q[idx, ilat,ilon] = surface_humidity[ilat,ilon]
+            u[idx, ilat,ilon] = u10[ilat,ilon]
+            v[idx, ilat,ilon] = v10[ilat,ilon]
+            pressure[idx, ilat,ilon] = sp_value
+            q[idx:37, ilat, ilon] =  0
+
+        if sp_value > 1000:
+            q[36, ilat, ilon] = f(sp_value)
+            u[36, ilat, ilon ] = u10[ilat,ilon]
+            v[36, ilat, ilon ] = v10[ilat,ilon]
+
+    colint = atm.colint_pressure(q, pressure)
+    qu = atm.colint_pressure(q*u, pressure)
+    qv= atm.colint_pressure(q*v, pressure)
+    
+    return colint, qu, qv 
+
+
+
+
+
+
