@@ -36,22 +36,24 @@ for year in np.arange(1979,2020):
         t_0 = datetime(year, month, 1, 0)
         t_1 = datetime(year, month, day, 23)
 
-        # download monthly and hourly data 
+        # check whether processed files not already exist 
         if os.path.isfile('tmpdir/processed/qu_prime' +str(year)+ m + '.nc') == False:
-            # download only if files are not already there 
-            if len(glob.glob('tmpdir/hourly/reanalysis-era5-pressure-levels_' + str(year) + m + '*q-u-v*.nc')) > 700:
+            # download monthly and hourly data only if files are not already there 
+            if len(glob.glob('tmpdir/hourly/reanalysis-era5-pressure-levels_' + str(year) + m + '*.nc')) > 500:
                 hourly_files = glob.glob('tmpdir/hourly/reanalysis-era5-pressure-levels_'+ str(year)+ m +'*.nc')
-                monthly_files = glob.glob('tmpdir/monthly/reanalysis-era5-pressure-levels_'+ str(year) + m + '*.nc')
+                monthly_files = glob.glob('tmpdir/monthly/reanalysis-era5-pressure-levels-monthly-means_'+ str(year) + m + '*.nc')
+                print(len(hourly_files), ' files found for', str(year), m)
             else:
                 hourly_files = pressure_hourly.download(t_0, t_1, destination = 'tmpdir/hourly')
                 monthly_files = pressure_monthly.download(t_0, t_1, destination = 'tmpdir/monthly')
-            
+                print('all files downloaded.')
+                
             # sort hourly files of one month  
             hourly_files.sort()
-            assert len(hourly_files) > 0
+            assert len(hourly_files) > 500
             assert len(monthly_files) == 1 
 
-            print('starting preprocessing of hourly files for :', m, str(year))
+            print('starting preprocessing of hourly files for :',str(year), m)
             # initialize arrays for calculations
             
             qu_prim = np.zeros((nr_levels, nr_lats, nr_lons))
@@ -82,9 +84,9 @@ for year in np.arange(1979,2020):
                 if np.mod(i,24)== 0:
                     if i!= 0:
                         # calculate deviations from monthly mean
-                        q_dev_d = q_d - q_mean 
-                        u_dev_d = u_d - u_mean 
-                        v_dev_d = v_d - v_mean 
+                        q_dev_d = q_d / 24 - q_mean 
+                        u_dev_d = u_d / 24 - u_mean 
+                        v_dev_d = v_d / 24 - v_mean 
                         qu_prim_d += (q_dev_d * u_dev_d)
                         qv_prim_d += (q_dev_d * v_dev_d)
                     
@@ -105,8 +107,7 @@ for year in np.arange(1979,2020):
                 # extract variables from hourly data  
                 u = data.u.values[0]
                 v = data.v.values[0]
-                z = data.z.values[0]
-                
+                               
                 # include cloud particles and frozen particles in total atmospheric moisture budget  
                 ciwc = data.ciwc.values[0]
                 clwc = data.clwc.values[0]
