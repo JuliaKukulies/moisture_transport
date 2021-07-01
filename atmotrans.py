@@ -310,9 +310,9 @@ def divergence(data,qu,qv):
     
     """
     import wrf
-    dlat, dlon = atm.get_spacing(data.latitude.values, data.longitude.values)
-    udiff= atm.derivative_u(qu, dlon)
-    vdiff= atm.derivative_v(qv, dlat)
+    dlat, dlon = get_spacing(data.latitude.values, data.longitude.values)
+    udiff= derivative_u(qu, dlon)
+    vdiff= derivative_v(qv, dlat)
     conv_total = (udiff + vdiff)
 
     return wrf.smooth2d(-(vdiff + udiff)*86400 , passes = 3)
@@ -359,7 +359,7 @@ def correct_column_integration(data, sp, q, u, v, u10, v10):
 
         pressure[:,ilat,ilon]= data.level.values
         pressure[36] =  sp
-        idx, pl = atm.find_nearest_idx(data.level.values, sp_value)
+        idx, pl = find_nearest_idx(data.level.values, sp_value)
 
         # function for extrapolation/ interpolation: 
         x_vals = data.level.values
@@ -381,9 +381,9 @@ def correct_column_integration(data, sp, q, u, v, u10, v10):
             u[36, ilat, ilon ] = u10[ilat,ilon]
             v[36, ilat, ilon ] = v10[ilat,ilon]
 
-    colint = atm.colint_pressure(q, pressure)
-    qu = atm.colint_pressure(q*u, pressure)
-    qv= atm.colint_pressure(q*v, pressure)
+    colint = colint_pressure(q, pressure)
+    qu = colint_pressure(q*u, pressure)
+    qv= colint_pressure(q*v, pressure)
     
     return colint, qu, qv 
 
