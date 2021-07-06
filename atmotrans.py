@@ -142,6 +142,34 @@ def weighted_mean(arr, data):
     return weighted_mean.values
 
 
+def weighted_mean_timeseries(arr, data):
+    """
+    This function calculates the area-weighted mean over a 3D field. 
+    
+    Args: 
+    arr: 3D array with variable that should be averaged over space
+    data: xarray with latitude and longitude coordinates
+
+    Returns: 
+    weighted_mean: timeseries with weighted means over the area
+
+    """   
+    dataset=xr.DataArray(arr,  dims= {'time':data.latitude[:-1].values,'latitude':data.latitude[:-1].values, 'longitude':data.longitude[:-1].values})
+    weights = np.cos(np.deg2rad(data.latitude[:-1]))
+    weights.name = "weights"
+    data_weighted = dataset.weighted(weights)
+    weighted_mean = data_weighted.mean(("latitude", "longitude"), skipna= True)
+    return weighted_mean.values
+
+
+
+
+
+
+
+
+
+
 ############################## MOISTURE DIVERGENCE##############################################
 
 def get_spacing(lats, lons):

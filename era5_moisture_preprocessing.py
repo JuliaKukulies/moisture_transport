@@ -19,8 +19,8 @@ nr_lats = 201
 nr_lons = 321 
 
 
-for year in np.arange(1979,2020):
-    for month in np.arange(5,10):
+for year in np.arange(1980,2020):
+    for month in np.arange(7,10):
         if month == 6 or month == 9:
             day= 30
             hours = 30*24
@@ -131,6 +131,9 @@ for year in np.arange(1979,2020):
                 qv_prim += (q_dev * v_dev)
 
                 data.close()
+
+            meandata.close()
+                
                 
             # save monthly average of primes (hourly deviations from monthly mean)
             xr.DataArray(data = qu_prim/hours, name = 'primeproduct_qu').to_netcdf('tmpdir/processed/qu_prim' + str(year) + m + '.nc')
