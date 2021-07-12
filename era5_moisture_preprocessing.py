@@ -18,8 +18,7 @@ nr_levels = 37
 nr_lats = 201
 nr_lons = 321 
 
-
-for year in np.arange(1980,2020):
+for year in np.arange(1989,2020):
     for month in np.arange(7,10):
         if month == 6 or month == 9:
             day= 30
@@ -37,7 +36,7 @@ for year in np.arange(1980,2020):
         t_1 = datetime(year, month, day, 23)
 
         # check whether processed files not already exist 
-        if os.path.isfile('tmpdir/processed/qu_prime' +str(year)+ m + '.nc') == False:
+        if os.path.isfile('tmpdir/processed/qu_prim' +str(year)+ m + '.nc') == False:
             # download monthly and hourly data only if files are not already there 
             if len(glob.glob('tmpdir/hourly/reanalysis-era5-pressure-levels_' + str(year) + m + '*.nc')) > 500:
                 hourly_files = glob.glob('tmpdir/hourly/reanalysis-era5-pressure-levels_'+ str(year)+ m +'*.nc')
