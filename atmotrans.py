@@ -110,7 +110,7 @@ def column_integration_height(values, z, ax = None ):
 
 
 
-def column_integration(data, sp, var):
+def column_integration(levels, sp, var):
     """
 
     This function integrates over vertical pressure levels in ERA5 after setting values
@@ -118,7 +118,7 @@ def column_integration(data, sp, var):
     values above the maximum pressure level 1000 hpa with extrapolated values. 
 
     Args: 
-    data: xarray that contains pressure coordinates
+    levels: 1D array that contains pressure coordinates
     sp: 2D field with surface pressures 
     war: 3D field with variable to integrate 
 
@@ -128,32 +128,31 @@ def column_integration(data, sp, var):
     """
     from scipy import interpolate
     import wrf 
-    coords = np.where(sp < 10000)
-    pressure = np.zeros((37,201,321))
+    coords = np.where(sp < 100000)
+    pressure = np.zeros(var.shape)
     for i, ilat in enumerate(coords[0]):
         ilon = coords[1][i]
         sp_value = sp[ilat,ilon]
 
-        pressure[:,ilat,ilon]= data.level.values
-        pressure[36, :, :] =  sp
-        idx, pl = atm.find_nearest_idx(data.level.values, sp_value)
+        pressure[:,ilat,ilon]= levels
+        pressure[levels.size-1, :, :] =  sp
+        idx, pl = find_nearest_idx(levels, sp_value)
 
         # function for extrapolation/ interpolation: 
-        x_vals = data.level.values
-        y_vals= qu[:,ilat,ilon]
+        x_vals = levels
+        y_vals= var[:,ilat,ilon]
         f = interpolate.interp1d(x_vals, y_vals, fill_value = "extrapolate", kind = 'cubic')
 
         # set q value below ground to 0 
         if sp_value < 1000:
-            if sp_value > pl:
-                idx = idx + 1  
             pressure[idx, ilat,ilon] = sp_value
-            var[idx:37, ilat, ilon] =  0
+            var[idx, ilat,ilon] = f(sp_value)
+            var[idx+1:levels.size, ilat, ilon] =  0
 
         if sp_value > 1000:
-            var[36, ilat, ilon] = f(sp_value)
+            var[levels.size-1, ilat, ilon] = f(sp_value)
 
-    colint = atm.colint_pressure(var, pressure)
+    colint = colint_pressure(var, pressure)
 
     return colint
 
@@ -188,12 +187,12 @@ def column_integration_q(data, sp, var, temp):
 
         pressure[:,ilat,ilon]= data.level.values
         pressure[36, :, :] =  sp
-        idx, pl = atm.find_nearest_idx(data.level.values, sp_value)
+        idx, pl = find_nearest_idx(data.level.values, sp_value)
 
         # function for extrapolation/ interpolation: 
         x_vals = data.level.values
         y_vals= qu[:,ilat,ilon]
-        f = interpolate.interp1d(x_vals, y_vals, fill_value = "extrapolate", kind = 'cubic')
+        f = interpatm.olate.interp1d(x_vals, y_vals, fill_value = "extrapolate", kind = 'cubic')
 
         # set q value below ground to 0 
         if sp_value < 1000:
