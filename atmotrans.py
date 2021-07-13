@@ -61,6 +61,42 @@ def geopotential_to_height(z):
 
 
 def get_surface_humidity(temperature, spressure):
+    '''
+    This function calculates near-surface humidity for ERA5 
+    based on the 2m dew point temperature and surafce pressure. 
+
+    Args: 
+    temperature: 2D array with 2m dew point temperature 
+    spressure: 2D array with surface pressure values in hpa
+
+    Returns:
+    q_sat: near surface humidity in kg/kg 
+
+    '''
+    
+    #### define constants #### 
+
+    # gas constants for dry air and water vapour in J K-1 kg-1
+    Rdry= 287
+    Rvap= 461
+    # constants for Tetens formula (for saturation over water)
+    c1= 611.21
+    c2= 17.502
+    c3= 32.19
+    # freezing point
+    T0 = 273.16 
+    
+    spressure = spressure*100
+    e_sat = c1* np.exp( c2 * ((temperature - T0)/ (temperature - c3)))
+    
+    q_sat = ((Rdry / Rvap) * e_sat ) / (spressure - (1- Rdry/Rvap) * e_sat )
+    return q_sat
+
+
+
+
+
+def get_surface_humidity(temperature, spressure):
     """
 
     This functions computes the near-surface humidity for ERA5 data, given the dew point temperature and surface pressure.
