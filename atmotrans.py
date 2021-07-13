@@ -29,6 +29,7 @@ c= -1/(g)
 
 # gas constant for water vapour in J K-1 kg-1
 Rvap= 461
+
 # constants for Tetens formula (for saturation over water)
 c1= 611.21
 c2= 17.502
@@ -93,24 +94,6 @@ def get_surface_humidity(temperature, spressure):
     return q_sat
 
 
-
-
-
-def get_surface_humidity(temperature, spressure):
-    """
-
-    This functions computes the near-surface humidity for ERA5 data, given the dew point temperature and surface pressure.
-
-    Args:
-    temperature: 2D field of 2m dew point temperature
-    spressure: 2D fields of surface pressure 
-
-    Returns:
-    q_sat: 2D near-surface specific humidity (kg/kg)
-    """
-    e_sat = c1* np.exp( c2 * ((temperature - T0)/ (temperature - c3)))
-    q_sat = ((R / Rvap) * e_sat ) / (spressure - (1- R/Rvap) * e_sat )
-    return q_sat
 
 
 def colint_pressure(values,pressure_levels):
