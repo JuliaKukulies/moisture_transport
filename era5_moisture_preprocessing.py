@@ -18,8 +18,9 @@ nr_levels = 37
 nr_lats = 201
 nr_lons = 321 
 
-for year in np.arange(1989,2020):
-    for month in np.arange(7,10):
+
+for year in np.arange(1990,2020):
+    for month in np.arange(5,7):
         if month == 6 or month == 9:
             day= 30
             hours = 30*24
